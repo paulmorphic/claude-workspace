@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Personal workspace files (contain local, machine-specific paths)
+*.code-workspace
+
+# Claude Code local session/config data
+.claude/
