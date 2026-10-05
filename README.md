@@ -7,7 +7,9 @@
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-black?logo=apple)](#)
 [![VS Code workspace format](https://img.shields.io/badge/uses-VS%20Code%20workspace%20format-007ACC?logo=visualstudiocode&logoColor=white)](#)
 
-**Pick a workspace, and Claude Code opens with all its folders attached.**
+**Pick a workspace, and the Claude Code CLI opens with all its folders and context attached.**
+<br>
+**Full context:** loads the `CLAUDE.md` of every folder.
 <br>
 **VS Code–friendly:** reuses `.code-workspace` files you already have — no new format to learn.
 
@@ -90,6 +92,9 @@ Paths are relative to the file (like in VS Code), or absolute / `~/…`. Or crea
 
 ## 📝 Good to know
 
+- `CLAUDE.md` and `.claude/rules` of every folder in the workspace are loaded, not just the first (`claude-ws` sets `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`; plain `--add-dir` doesn't). The session itself, with its history and memory, belongs to the first folder.
+- ⚠️ Loading all those files adds to the context of every session, so **token usage can go up** — noticeably with many folders or large `CLAUDE.md` files. To turn it off, add `export CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0` to `~/.zshrc`.
+- This is Claude Code behavior defined by Anthropic, so it may change independently of this tool. See the docs: [Memory → Load from additional directories](https://code.claude.com/docs/en/memory#load-from-additional-directories) and [Environment variables](https://code.claude.com/docs/en/env-vars).
 - Workspace files are trusted: every folder they list is passed to `claude` via `--add-dir`, without a prompt. Keep only files you trust in `CLAUDE_WORKSPACE_DIRS`; the added folders are printed before launch.
 
 ## 🧹 Uninstall

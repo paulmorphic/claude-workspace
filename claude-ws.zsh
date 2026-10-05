@@ -98,5 +98,7 @@ claude-ws() {
   for d in "${dirs[@]:1}"; do
     echo "→ add-dir: $d"
   done
-  ( cd "$first" && command claude "${args[@]}" "$@" )
+  # Also load CLAUDE.md / .claude/rules from every added folder. On by default;
+  # set CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0 in ~/.zshrc to turn it off.
+  ( cd "$first" && CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD="${CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD:-1}" command claude "${args[@]}" "$@" )
 }
