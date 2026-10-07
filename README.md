@@ -36,6 +36,8 @@ It's VS Code–friendly by design: it reads the exact `.code-workspace` JSON fil
 3. Reads the folder list from the chosen file with `jq`.
 4. Starts `claude` in the first folder and adds the rest with `--add-dir`.
 
+**The first folder is the "home" of the session.** Claude works there by default, and the session itself — its history and memory (auto memory, `/resume`) — belongs to that folder. The other folders are attached as extra context: Claude can read and edit them, and their `CLAUDE.md` files are loaded, but nothing session-related is stored there. So put the folder you work in most (or where you want Claude's notes to live) first in the `folders` list.
+
 It uses the plain VS Code `.code-workspace` JSON, but VS Code itself is not required.
 
 ## 📋 Requirements
@@ -92,7 +94,7 @@ Paths are relative to the file (like in VS Code), or absolute / `~/…`. Or crea
 
 ## 📝 Good to know
 
-- `CLAUDE.md` and `.claude/rules` of every folder in the workspace are loaded, not just the first (`claude-ws` sets `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`; plain `--add-dir` doesn't). The session itself, with its history and memory, belongs to the first folder.
+- `CLAUDE.md` and `.claude/rules` of every folder in the workspace are loaded, not just the first (`claude-ws` sets `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`; plain `--add-dir` doesn't).
 - ⚠️ Loading all those files adds to the context of every session, so **token usage can go up** — noticeably with many folders or large `CLAUDE.md` files. To turn it off, add `export CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0` to `~/.zshrc`.
 - This is Claude Code behavior defined by Anthropic, so it may change independently of this tool. See the docs: [Memory → Load from additional directories](https://code.claude.com/docs/en/memory#load-from-additional-directories) and [Environment variables](https://code.claude.com/docs/en/env-vars).
 - Workspace files are trusted: every folder they list is passed to `claude` via `--add-dir`, without a prompt. Keep only files you trust in `CLAUDE_WORKSPACE_DIRS`; the added folders are printed before launch.
