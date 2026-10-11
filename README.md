@@ -82,13 +82,13 @@ A workspace file, e.g. `/path/to/workspaces/my-app.code-workspace`:
 ```json
 {
   "folders": [
-    { "path": "~/code/project-a" },
-    { "path": "/Users/me/work/project-b" }
+    { "name": "project-a", "path": "~/code/project-a" },
+    { "name": "project-b", "path": "/Users/me/work/project-b" }
   ]
 }
 ```
 
-Paths can be absolute, `~/…`, or relative to the file (like in VS Code). Or create the file with VS Code: **File → Save Workspace As…**
+Paths can be absolute, `~/…`, or relative to the file (like in VS Code). The optional `name` is the label VS Code shows for the folder; `claude-ws` only reads `path`, so you can add it or leave it out. Or create the file with VS Code: **File → Save Workspace As…**
 
 ## 📝 Good to know
 
