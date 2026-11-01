@@ -289,13 +289,9 @@ _claude_ws_create() {
     break
   done
 
-  # Folders under $HOME are stored as ~/… so the file stays portable.
-  jq -n --arg home "$HOME" '{folders: [$ARGS.positional[] | {
-      name: (split("/") | last),
-      path: (if . == $home then "~"
-             elif startswith($home + "/") then "~" + .[($home | length):]
-             else . end)
-    }]}' --args "${picked[@]}" > "$file" || {
+  # Absolute paths: VS Code does not expand ~ in workspace files.
+  jq -n '{folders: [$ARGS.positional[] | {name: (split("/") | last), path: .}]}' \
+    --args "${picked[@]}" > "$file" || {
     echo "claude-ws: cannot write $file" >&2
     return 1
   }

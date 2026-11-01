@@ -104,13 +104,13 @@ A workspace is a plain JSON file, e.g. `~/workspaces/my-app.code-workspace`:
 ```json
 {
   "folders": [
-    { "name": "project-a", "path": "~/code/project-a" },
-    { "name": "project-b", "path": "/Users/me/work/project-b" }
+    { "name": "project-a", "path": "/Users/me/code/project-a" },
+    { "name": "project-b", "path": "../work/project-b" }
   ]
 }
 ```
 
-Paths can be absolute, `~/…`, or relative to the file (like in VS Code). The optional `name` is the label VS Code shows for the folder; `claude-ws` only reads `path`. Edit it by hand, create one in VS Code (**File → Save Workspace As…**), or let `claude-ws` write it for you.
+Paths can be absolute or relative to the file, like in VS Code. `claude-ws` also accepts `~/…`, but VS Code doesn't — avoid it if you open the file there too. The optional `name` is the label VS Code shows for the folder; `claude-ws` only reads `path`. Edit it by hand, create one in VS Code (**File → Save Workspace As…**), or let `claude-ws` write it for you.
 
 ## 🔧 Configuration
 
