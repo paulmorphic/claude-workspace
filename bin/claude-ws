@@ -1,4 +1,5 @@
-# claude-ws.zsh — interactive workspace picker for the `claude` CLI
+#!/usr/bin/env zsh
+# claude-ws — interactive workspace picker for the `claude` CLI
 #
 # `claude-ws` lists the *.code-workspace files in your workspace folder
 # (one level only, no recursive search),
@@ -14,12 +15,12 @@
 # Workspace files stay plain VS Code files — nothing is injected into them.
 #
 # Requires zsh + jq + fzf. Designed for macOS.
-# Requires CLAUDE_WORKSPACE_DIRS: the folder(s) holding your workspace files
-# (colon-separated, e.g. "/path/to/workspaces:/another/folder").
+# Requires CLAUDE_WORKSPACE_DIRS (exported): the folder(s) holding your
+# workspace files (colon-separated, e.g. "/path/to/workspaces:/another/folder").
 
-claude-ws() {
+main() {
   [[ -n "$CLAUDE_WORKSPACE_DIRS" ]] || {
-    echo "claude-ws: CLAUDE_WORKSPACE_DIRS is not set" >&2
+    echo "claude-ws: CLAUDE_WORKSPACE_DIRS is not set (or not exported)" >&2
     echo "  add to ~/.zshrc: export CLAUDE_WORKSPACE_DIRS=\"/path/to/workspaces\"" >&2
     return 1
   }
@@ -302,3 +303,5 @@ _claude_ws_create() {
 
   _claude_ws_launch "$file" "$@"
 }
+
+main "$@"

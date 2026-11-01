@@ -21,7 +21,7 @@
 
 ## 💡 What is this
 
-`claude-ws` is a single zsh function that sits next to `claude`. Run it, pick a workspace from a menu, and `claude` boots up in the right folder with every other folder already attached via `--add-dir`. No config files to maintain, no manual `--add-dir` typing, no touching `claude` itself.
+`claude-ws` is a single zsh script that sits next to `claude`. Run it, pick a workspace from a menu, and `claude` boots up in the right folder with every other folder already attached via `--add-dir`. No config files to maintain, no manual `--add-dir` typing, no touching `claude` itself.
 
 It's VS Code–friendly by design: it reads the exact `.code-workspace` JSON files VS Code already uses for multi-root projects, so if you're already organizing work that way, `claude-ws` just plugs in — no separate config format to keep in sync. VS Code itself is not required.
 
@@ -51,15 +51,15 @@ cd claude-workspace
 ./install.sh
 ```
 
-The installer adds `claude-ws` to `~/.zshrc` (safe to re-run; every run first saves a copy as `~/.zshrc.bak-claude-ws-<date>-<time>`). Don't edit or remove the `# >>> claude-ws` / `# <<< claude-ws` marker lines — install and uninstall rely on them.
+The installer links `bin/claude-ws` into `~/.local/bin` (and tells you if that folder isn't in your `PATH` yet). It's a link, not a copy: to update, just `git pull` in the cloned folder. Safe to re-run. If an older version pasted `claude-ws` into `~/.zshrc`, the installer removes that block (after saving a copy as `~/.zshrc.bak-claude-ws-<date>-<time>`).
 
 Then tell it where your `.code-workspace` files are — add to `~/.zshrc` the folder that holds them (subfolders are not searched). Separate several folders with `:`:
 
 ```bash
-export CLAUDE_WORKSPACE_DIRS="/path/to/workspaces:/another/folder"
+export CLAUDE_WORKSPACE_DIRS="$HOME/path/to/workspaces:/another/folder"
 ```
 
-Reload with `source ~/.zshrc` or open a new terminal.
+Keep the `export` (`claude-ws` is a separate program and only sees exported variables), and use `$HOME` rather than `~` inside the quotes — a quoted `~` is not expanded. Reload with `source ~/.zshrc` or open a new terminal.
 
 ## 🚀 Usage
 
@@ -114,11 +114,10 @@ Marks stay while you move around. With two or more folders marked, `Ctrl-S` then
 ## 🧹 Uninstall
 
 ```bash
-cp ~/.zshrc ~/.zshrc.bak                                          # safety copy
-sed -i '' '/^# >>> claude-ws (/,/^# <<< claude-ws (/d' ~/.zshrc   # remove the block
+rm ~/.local/bin/claude-ws
 ```
 
-Then delete the `CLAUDE_WORKSPACE_DIRS` (and `CLAUDE_WORKSPACE_BROWSE_ROOT`, if set) export lines you added.
+Then delete the cloned folder and the `CLAUDE_WORKSPACE_DIRS` (and `CLAUDE_WORKSPACE_BROWSE_ROOT`, if set) export lines you added.
 
 ## 📄 License
 
