@@ -7,6 +7,10 @@
 # other folder passed as --add-dir. The `claude` command itself is never
 # touched.
 #
+# The "+ New workspace…" entry opens a folder browser instead: walk the
+# tree from CLAUDE_WORKSPACE_BROWSE_ROOT (default: $HOME), mark folders, name the
+# workspace, and it is saved next to the others and launched right away.
+#
 # Workspace files stay plain VS Code files — nothing is injected into them.
 #
 # Requires zsh + jq + fzf. Designed for macOS.
@@ -33,13 +37,14 @@ claude-ws() {
   # folders themselves are listed — subfolders are never searched.
   local ws_dirs=("${(@s/:/)CLAUDE_WORKSPACE_DIRS}")
 
-  local found files choice
+  local found files choice new_entry='+ New workspace…'
   found=("${(f)$(find "${ws_dirs[@]}" -maxdepth 1 -type f -name '*.code-workspace' 2>/dev/null)}")
 
+  # Nothing to pick yet — go straight to creating the first workspace.
   (( ${#found} )) && [[ -n "${found[1]}" ]] || {
-    echo "claude-ws: no .code-workspace files found in ${ws_dirs[*]}" >&2
-    echo "  create one in VS Code (File → Save Workspace As…), or point CLAUDE_WORKSPACE_DIRS elsewhere" >&2
-    return 1
+    echo "claude-ws: no .code-workspace files in ${ws_dirs[*]} yet" >&2
+    _claude_ws_create "${ws_dirs[1]}" "$@"
+    return
   }
 
   # Newest first, duplicates removed. ANSI color codes are stripped —
@@ -47,14 +52,25 @@ claude-ws() {
   # would leak into the menu as raw text.
   files=("${(f)$(command ls -1dt -- "${found[@]}" 2>/dev/null | sed $'s/\e\[[0-9;]*m//g' | awk '!seen[$0]++')}")
 
-  choice=$(print -l -- "${files[@]}" | fzf --layout=reverse --exact \
+  choice=$(print -l -- "$new_entry" "${files[@]}" | fzf --layout=reverse --exact \
     --height ~50% --border \
     --prompt 'Search › ' \
     --header 'Enter to pick, Esc to quit' \
     --delimiter / --with-nth=-2..)
   [[ -n "$choice" ]] || return 0
 
-  # First folder becomes the working directory, the rest become --add-dir.
+  if [[ "$choice" == "$new_entry" ]]; then
+    _claude_ws_create "${ws_dirs[1]}" "$@"
+  else
+    _claude_ws_launch "$choice" "$@"
+  fi
+}
+
+# Starts `claude` for a workspace file: the first folder becomes the working
+# directory, the rest become --add-dir. Extra arguments go to `claude`.
+_claude_ws_launch() {
+  local choice="$1"; shift
+
   # Every path is resolved to an absolute, normalized form: relative paths
   # (e.g. ../api) are taken relative to the workspace file, as VS Code does,
   # and a leading ~ is expanded.
@@ -101,4 +117,188 @@ claude-ws() {
   # Also load CLAUDE.md / .claude/rules from every added folder. On by default;
   # set CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0 in ~/.zshrc to turn it off.
   ( cd "$first" && CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD="${CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD:-1}" command claude "${args[@]}" "$@" )
+}
+
+# Prints a path with $HOME shown as ~ (for display only).
+_claude_ws_tilde() {
+  if [[ "$1" == "$HOME" || "$1" == "$HOME/"* ]]; then
+    print -r -- "~${1#$HOME}"
+  else
+    print -r -- "$1"
+  fi
+}
+
+# Folder browser: walk the tree from CLAUDE_WORKSPACE_BROWSE_ROOT (default: $HOME)
+# and mark folders. Prints the marked folders, in marking order, one per line;
+# returns non-zero when cancelled. fzf runs once per screen and the marks live
+# here, so they survive moving between folders (fzf's own --multi would not).
+_claude_ws_browse() {
+  # :a, not :A — symlinks stay as walked, so ← goes back where you came from.
+  local cwd="${${CLAUDE_WORKSPACE_BROWSE_ROOT:-$HOME}:a}"
+  [[ -d "$cwd" ]] || {
+    echo "claude-ws: $cwd (CLAUDE_WORKSPACE_BROWSE_ROOT) does not exist" >&2
+    return 1
+  }
+
+  local -a picked subdirs lines
+  local res key sel p i off pos=1 note header this
+
+  while true; do
+    # Visible subfolders (symlinks to folders included), sorted by name,
+    # after the "this folder" line and ".." (not shown at /). off counts
+    # those extra lines, for cursor positions.
+    subdirs=("$cwd"/*(N-/:t))
+    this="this folder: $(_claude_ws_tilde "$cwd")"
+    if (( ${picked[(Ie)$cwd]} )); then lines=("✓ $this"); else lines=("  $this"); fi
+    off=1
+    [[ "$cwd" != / ]] && { lines+=('  ..'); off=2 }
+    for sel in "${subdirs[@]}"; do
+      p="${cwd%/}/$sel"
+      if (( ${picked[(Ie)${p:a}]} )); then
+        lines+=("✓ $sel")
+      else
+        lines+=("  $sel")
+      fi
+    done
+
+    header="📁 $(_claude_ws_tilde "$cwd")"$'\n'
+    header+='→/Enter open · ← up · Tab mark · Ctrl-S done · Esc cancel'
+    if (( ${#picked} )); then
+      header+=$'\n'"Marked:"
+      for i in {1..${#picked}}; do
+        header+=$'\n'"  $i. $(_claude_ws_tilde "${picked[i]}")"
+      done
+    fi
+    [[ -n "$note" ]] && header+=$'\n'"$note"
+    note=""
+
+    res=$(print -l -- "${lines[@]}" | fzf --layout=reverse --exact --no-sort \
+      --height ~60% --border \
+      --prompt 'Folder › ' \
+      --header "$header" \
+      --expect=right,left,tab,ctrl-s \
+      --bind "load:pos($pos)")
+    case $? in
+      130) return 1 ;;
+      2)
+        echo "claude-ws: fzf failed — the folder browser needs fzf 0.36 or newer (fzf --version)" >&2
+        return 1
+        ;;
+    esac
+    pos=1
+
+    key="${res%%$'\n'*}"
+    sel=""
+    [[ "$res" == *$'\n'* ]] && sel="${res#*$'\n'}"
+    sel="${sel[3,-1]}"  # drop the "✓ " / "  " mark column
+
+    [[ "$key" == '' || "$key" == right ]] && [[ "$sel" == .. ]] && key=left
+    # Enter on the "this folder" line marks it, same as Tab.
+    [[ "$key" == '' && "$sel" == "$this" ]] && key=tab
+
+    case "$key" in
+      ''|right)
+        if [[ -n "$sel" && "$sel" != "$this" ]]; then
+          p="${cwd%/}/$sel"
+          cwd="${p:a}"
+        fi
+        ;;
+      left)
+        if [[ "$cwd" != / ]]; then
+          sel="${cwd:t}"
+          cwd="${cwd:h}"
+          # Land on the folder we just left.
+          subdirs=("$cwd"/*(N-/:t))
+          off=1; [[ "$cwd" != / ]] && off=2
+          i=${subdirs[(Ie)$sel]}
+          (( i )) && pos=$(( i + off ))
+        fi
+        ;;
+      tab)
+        [[ -z "$sel" || "$sel" == .. ]] && continue
+        if [[ "$sel" == "$this" ]]; then
+          p="$cwd"
+        else
+          p="${cwd%/}/$sel"
+          p="${p:a}"
+          # Keep the cursor on the folder just marked.
+          pos=$(( ${subdirs[(Ie)$sel]} + off ))
+        fi
+        i=${picked[(Ie)$p]}
+        if (( i )); then
+          picked[i]=()
+        else
+          picked+=("$p")
+        fi
+        ;;
+      ctrl-s)
+        if (( ${#picked} )); then
+          print -l -- "${picked[@]}"
+          return 0
+        fi
+        note='⚠ Mark at least one folder first (Tab).'
+        ;;
+    esac
+  done
+}
+
+# Creates a workspace: browse and mark folders, name it, save it as
+# <name>.code-workspace in the first CLAUDE_WORKSPACE_DIRS folder, launch it.
+_claude_ws_create() {
+  local ws_dir="$1"; shift
+  [[ "$ws_dir" == /* && -d "$ws_dir" ]] || {
+    echo "claude-ws: cannot save to '$ws_dir' (first folder in CLAUDE_WORKSPACE_DIRS) — it must be an existing absolute path" >&2
+    [[ "$ws_dir" == "~"* ]] && echo '  ~ is not expanded inside quotes — use $HOME: export CLAUDE_WORKSPACE_DIRS="$HOME/…"' >&2
+    return 1
+  }
+
+  local -a picked
+  picked=("${(f)$(_claude_ws_browse)}") || return 0
+  (( ${#picked} )) && [[ -n "${picked[1]}" ]] || return 0
+
+  # Home folder: the session and its memory live there. Defaults to the first
+  # one marked (highlighted, so Enter keeps it); it is moved to the front.
+  if (( ${#picked} > 1 )); then
+    local home i
+    home=$(for i in {1..${#picked}}; do
+        print -r -- "$i"$'\t'"$(_claude_ws_tilde "${picked[i]}")"
+      done | fzf --layout=reverse --exact --no-sort \
+      --delimiter $'\t' --with-nth=2 \
+      --height ~40% --border \
+      --prompt 'Home › ' \
+      --header $'Pick the home folder — claude starts there, the session and memory live there\nEnter to pick, Esc to cancel') || return 0
+    i="${home%%$'\t'*}"
+    picked=("${picked[i]}" "${(@)picked[1,i-1]}" "${(@)picked[i+1,-1]}")
+  fi
+
+  local name="${picked[1]:t}" file
+  while true; do
+    vared -p 'Workspace name (empty to cancel): ' name || return 0
+    name="${name// /-}"
+    [[ -n "$name" ]] || { echo "claude-ws: cancelled" >&2; return 0 }
+    if [[ "$name" == *[^A-Za-z0-9._-]* ]]; then
+      echo "claude-ws: use only letters, digits, '.', '_' and '-'" >&2
+      continue
+    fi
+    file="$ws_dir/$name.code-workspace"
+    if [[ -e "$file" ]]; then
+      echo "claude-ws: $file already exists — pick another name" >&2
+      continue
+    fi
+    break
+  done
+
+  # Folders under $HOME are stored as ~/… so the file stays portable.
+  jq -n --arg home "$HOME" '{folders: [$ARGS.positional[] | {
+      name: (split("/") | last),
+      path: (if . == $home then "~"
+             elif startswith($home + "/") then "~" + .[($home | length):]
+             else . end)
+    }]}' --args "${picked[@]}" > "$file" || {
+    echo "claude-ws: cannot write $file" >&2
+    return 1
+  }
+  echo "→ saved: $file"
+
+  _claude_ws_launch "$file" "$@"
 }

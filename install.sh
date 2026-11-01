@@ -67,4 +67,8 @@ if ! grep -qE '^[[:space:]]*(export[[:space:]]+)?CLAUDE_WORKSPACE_DIRS=' "$RC"; 
   echo '      export CLAUDE_WORKSPACE_DIRS="/path/to/workspaces"'
   echo '    Several folders: separate them with ":".'
 fi
+if ! grep -qE '^[[:space:]]*(export[[:space:]]+)?CLAUDE_WORKSPACE_BROWSE_ROOT=' "$RC"; then
+  echo "    Optional: where \"+ New workspace…\" starts browsing (default: \$HOME):"
+  echo '      export CLAUDE_WORKSPACE_BROWSE_ROOT="$HOME/Projects"'
+fi
 echo "    Then open a new terminal (or: source ~/.zshrc) and run: claude-ws"

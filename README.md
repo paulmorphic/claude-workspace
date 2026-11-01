@@ -15,10 +15,6 @@
 
 <br>
 
-<img src="docs/picker.png" alt="claude-ws workspace picker" width="700">
-
-<br>
-
 </div>
 
 ---
@@ -42,7 +38,7 @@ It's VS Code–friendly by design: it reads the exact `.code-workspace` JSON fil
 
 - macOS + zsh
 - [`jq`](https://stedolan.github.io/jq/)
-- [`fzf`](https://github.com/junegunn/fzf)
+- [`fzf`](https://github.com/junegunn/fzf) 0.36 or newer
 - The official `claude` CLI
 
 ## 📦 Install
@@ -88,7 +84,25 @@ A workspace file, e.g. `/path/to/workspaces/my-app.code-workspace`:
 }
 ```
 
-Paths can be absolute, `~/…`, or relative to the file (like in VS Code). The optional `name` is the label VS Code shows for the folder; `claude-ws` only reads `path`, so you can add it or leave it out. Or create the file with VS Code: **File → Save Workspace As…**
+Paths can be absolute, `~/…`, or relative to the file (like in VS Code). The optional `name` is the label VS Code shows for the folder; `claude-ws` only reads `path`, so you can add it or leave it out. Or create the file with VS Code: **File → Save Workspace As…** — or right from `claude-ws`, see below.
+
+### ➕ Create a workspace
+
+Pick **`+ New workspace…`** at the top of the menu (it opens on its own when you have no workspaces yet). A folder browser starts in `CLAUDE_WORKSPACE_BROWSE_ROOT` — `$HOME` unless you set it:
+
+```bash
+export CLAUDE_WORKSPACE_BROWSE_ROOT="$HOME/Projects"
+```
+
+| Key | Action |
+| --- | --- |
+| `→` / `Enter` | open folder |
+| `←` | go up |
+| `Tab` | mark / unmark the highlighted folder (the `this folder: …` line at the top = the one you're in; Enter works there too) |
+| `Ctrl-S` | done |
+| `Esc` | cancel |
+
+Marks stay while you move around. With two or more folders marked, `Ctrl-S` then asks which one is **the home of the session** (the first one marked is preselected — just press Enter to keep it). Then type a name: the workspace is saved as `<name>.code-workspace` in the first folder of `CLAUDE_WORKSPACE_DIRS` (an existing file is never overwritten), and `claude` starts right away. Next time it's in the menu like any other.
 
 ## 📝 Good to know
 
@@ -104,7 +118,7 @@ cp ~/.zshrc ~/.zshrc.bak                                          # safety copy
 sed -i '' '/^# >>> claude-ws (/,/^# <<< claude-ws (/d' ~/.zshrc   # remove the block
 ```
 
-Then delete the `CLAUDE_WORKSPACE_DIRS` export line you added.
+Then delete the `CLAUDE_WORKSPACE_DIRS` (and `CLAUDE_WORKSPACE_BROWSE_ROOT`, if set) export lines you added.
 
 ## 📄 License
 
